@@ -1,0 +1,57 @@
+'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/Part
+'---------------------------------------------
+'SetColorToDefault.iLogicVb v1.0
+'Created by R.Churakov 2022
+'---------------------------------------------
+'The rule switches color of the active part to
+'default color of the current material.
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's part document
+	If ThisApplication.ActiveDocument.DocumentType <> kPartDocumentObject Then
+		MessageBox.Show("A part must be active.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the active document is modifiable
+	If Not ThisApplication.ActiveDocument.IsModifiable Then
+		MessageBox.Show("Can't modify part because file is read-only.", "iLogic: Read-only file", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check active project type (36353 = kSingleUserMode, single user project)
+	If ThisApplication.DesignProjectManager.ActiveDesignProject.ProjectType <> MultiUserModeEnum.kSingleUserMode Then
+		'Check if the active document reserved for write
+		If ThisApplication.ActiveDocument.ReservedForWrite() Then
+			'Check if the active document reserved by the caller
+			If Not ThisApplication.ActiveDocument.ReservedForWriteByMe() Then
+				MessageBox.Show("Active part not reserved by you.", "iLogic: No permision for write", _
+								MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+				Exit Sub
+			End If
+		Else
+			MessageBox.Show("To save changes you need to checkout part.", "iLogic: File not reserved", _
+						MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+		End If
+	End If
+	
+	'Get active part document
+	Dim activePart As PartDocument
+	activePart = ThisApplication.ActiveDocument
+
+	'Get a reference to the material render style.
+	Dim defaultRenderStyle As RenderStyle
+	defaultRenderStyle = activePart.ComponentDefinition.Material.RenderStyle()
+
+	'Assign the render style to the part.
+	activePart.ActiveRenderStyle = defaultRenderStyle
+
+	'Force the view to update to see the change.
+	ThisApplication.ActiveView.Update()
+	
+End Sub

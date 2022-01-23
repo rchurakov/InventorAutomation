@@ -1,0 +1,75 @@
+'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/Part
+'---------------------------------------------
+'AddUserCustomProperties.iLogicVb v1.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'The rule creates 4 properties of different
+'types in iProperties Custom tab.
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's part document
+	If ThisApplication.ActiveDocument.DocumentType <> kPartDocumentObject Then
+		MessageBox.Show("Can't create Properties. A part must be active.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the active document is modifiable
+	If Not ThisApplication.ActiveDocument.IsModifiable Then
+		MessageBox.Show("Can't create Properties because file is read-only.", "iLogic: Read-only file", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check active project type (36353 = kSingleUserMode, single user project)
+	If ThisApplication.DesignProjectManager.ActiveDesignProject.ProjectType <> MultiUserModeEnum.kSingleUserMode Then
+		'Check if the active document reserved for write
+		If ThisApplication.ActiveDocument.ReservedForWrite() Then
+			'Check if the active document reserved by the caller
+			If Not ThisApplication.ActiveDocument.ReservedForWriteByMe() Then
+				MessageBox.Show("Active part not reserved by you.", "iLogic: No permision for write", _
+								MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+				Exit Sub
+			End If
+		Else
+			MessageBox.Show("To save changes you need to checkout part.", "iLogic: File not reserved", _
+						MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+		End If
+	End If
+	
+	'Get the User Custom property set
+	Dim userCustomPropSet As PropertySet
+	userCustomPropSet = ThisApplication.ActiveDocument.PropertySets.Item("User Defined Properties")
+	
+	'*********************************************
+	'* Set here values for the Custom properties *
+	'*********************************************
+	Dim customer As String = "Some company"
+	Dim orderID As Integer = 1234
+	Dim released As Boolean = True
+	Dim releaseDate As Date = Now
+	'*********************************************
+	
+	'Create the properties
+	CreateCustomProperty("Company", customer, userCustomPropSet)
+	CreateCustomProperty("Order ID", orderID, userCustomPropSet)
+	CreateCustomProperty("Is Released", released, userCustomPropSet)
+	CreateCustomProperty("Release Date", releaseDate, userCustomPropSet)
+
+End Sub
+
+Sub CreateCustomProperty(propertyName As String, propertyValue As Object, destinationPropertySet As PropertySet)
+	Dim someProperty As Inventor.Property
+	Try
+		'Check if the property exists
+		someProperty = destinationPropertySet.Item(propertyName)
+		MessageBox.Show("Property already exist:" & vbNewLine & propertyName & " = " & someProperty.Value, "iLogic: Property not created", _
+						MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+	Catch
+		'Add Property to set
+		someProperty = destinationPropertySet.Add(propertyValue, propertyName)
+	End Try
+End Sub

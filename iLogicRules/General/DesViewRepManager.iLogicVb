@@ -1,0 +1,52 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/General
+'---------------------------------------------
+'DesViewRepManager.iLogicVb v1.1
+'Created by R.Churakov 2021
+'---------------------------------------------
+'The rule creates design view representation
+'manager in active model with list of
+'available representations
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's not drawing document
+	If ThisApplication.ActiveDocument.DocumentType = kDrawingDocumentObject Then
+		MessageBox.Show("Can't show Design view manager in drawing.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+		
+	'Get component Representations Manager
+	Dim activeModelRepMan As RepresentationsManager
+	activeModelRepMan = ThisApplication.ActiveDocument.ComponentDefinition.RepresentationsManager()
+
+	'Active design view name
+	Dim activeDVR As String
+	activeDVR = activeModelRepMan.ActiveDesignViewRepresentation.Name()
+	
+	'Make list of DVR in active model
+	Dim ListOfDVR As New ArrayList
+	
+	'Will store next design view representation object in for-each loop
+	Dim desViewRep As DesignViewRepresentation
+	
+	i = 1
+	For Each dvr In activeModelRepMan.DesignViewRepresentations
+		desViewRep = activeModelRepMan.DesignViewRepresentations.Item(i)
+		ListOfDVR.Add(desViewRep.Name)
+		i = i + 1
+	Next
+
+	'Set new design view representation from list
+	Dim newDesViewRep As String
+	newDesViewRep = InputListBox("Active design view: " & activeDVR & "." & vbNewLine & _
+								"Select another view.", ListOfDVR, activeDVR, "iLogic: Representations", "View's:")
+	
+	'Activate selected DVR
+	If newDesViewRep <> "" Then
+		activeModelRepMan.DesignViewRepresentations.Item(newDesViewRep).Activate()
+	End If
+
+End Sub

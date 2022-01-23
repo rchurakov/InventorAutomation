@@ -1,0 +1,99 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/General
+'---------------------------------------------
+'CopyToClipboard.iLogicVb v3.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'Rule copying filename (without extension) to 
+'clipboard:
+'	1)active model, when nothing selected yet;
+'	2)or selected component in assembly.
+'*********************************************
+
+Imports System.Windows.Forms
+
+Sub Main()
+	'Get user selection
+	Dim userSelectSet As SelectSet
+	userSelectSet = ThisApplication.ActiveDocument.SelectSet
+	
+	'Will store document of selected model
+	Dim selectedModelDocument As Document
+	
+	'Check number of items selected by user
+	Select Case userSelectSet.Count
+		'Nothing selected
+		Case 0
+			selectedModelDocument = ThisApplication.ActiveDocument
+			Goto ClipboardBlock
+		'Selected one component
+		Case 1
+			Goto CheckSelectionBlock
+		'Selected two or more components or something else
+		Case Else
+			Goto ErrorSelectionBlock
+	End Select
+	
+	CheckSelectionBlock:
+	'[
+	Try
+		'Get model document from user selection
+		selectedModelDocument = userSelectSet.Item(1).Definition.Document
+		Goto ClipboardBlock
+	Catch
+		MessageBox.Show("Component was not selected.", "iLogic: Wrong selection", MessageBoxButtons.OK, _
+						MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End Try
+	Exit Sub
+	']
+	
+	ClipboardBlock:
+	'[
+	'Check if the selected model exists
+	If selectedModelDocument.FileSaveCounter = 0 Then
+		MessageBox.Show("The model is not saved on the file system." & vbNewLine & _
+						"Save the model first.", "iLogic: Nothing to copy", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	Dim copyInfo As String
+	Dim pathFilenameExt As String = selectedModelDocument.FullFileName
+	Dim lastBackslashPosition As Integer = InStrRev(pathFilenameExt, "\", -1)
+	
+	'Copying Filename (without path and extension, see «Notes» section below for more information)
+	copyInfo = Mid(pathFilenameExt, lastBackslashPosition + 1, Len(pathFilenameExt) - lastBackslashPosition - 4)
+	
+	Clipboard.SetText(copyInfo)
+	Exit Sub
+	']
+	
+	ErrorSelectionBlock:
+	'[
+	MessageBox.Show("More than one component selected." & vbNewLine & "Please select only one instance.", _
+					"iLogic: Wrong selection", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+	Exit Sub
+	']
+End Sub
+
+
+'=============================================
+'Notes:
+'---------------------------------------------
+'[
+'Processing FullFileName:
+'copyInfo = selectedModelDocument.FullFileName                                   - Path + Filename + Extension
+'copyInfo = Left(pathFilenameExt, lastBackslashPosition - 1)                     - Path
+'copyInfo = Right(pathFilenameExt, Len(pathFilenameExt) - lastBackslashPosition) - Filename + Extension
+'copyInfo = selectedModelDocument.DisplayName                                    - Name in model browser
+'---------------------------------------------
+'Also you can reach iProperties:
+'copyInfo = selectedModelDocument.PropertySets.Item("Design Tracking Properties").Item("Part Number").Value - Part Number
+'copyInfo = selectedModelDocument.PropertySets.Item("Summary Information").Item("Title").Value              - Title
+'---------------------------------------------
+'propertySet = "Design Tracking Properties"   - "Part Number" here
+'propertySet = "Summary Information"          - "Title" here
+'propertySet = "Document Summary Information"
+'propertySet = "User Defined Properties"
+']

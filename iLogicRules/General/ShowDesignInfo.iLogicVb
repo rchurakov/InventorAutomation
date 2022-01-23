@@ -1,0 +1,59 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/General
+'---------------------------------------------
+'ShowDesignInfo.iLogicVb v1.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'The rule shows filename, part number and
+'title of active model in message box
+'*********************************************
+
+Sub Main()
+	
+	'Get currently selected component
+	Dim selectedModel As Document
+	Try
+		'Something selected
+		selectedModel = ThisApplication.ActiveDocument.SelectSet.Item(1).Definition.Document
+	Catch
+		'Nothing selected, so let's show info about active model
+		selectedModel = ThisApplication.ActiveDocument
+	End Try
+	
+	'Check if the selected model exists
+	If selectedModel.FileSaveCounter = 0 Then
+		MessageBox.Show("The model is not saved on the file system." & vbNewLine & _
+						"Save the model first to see the information.", "iLogic: No info", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+
+	'[
+	'Get full file name (path + filename + extension)
+	Dim fullPathSelectedModel As String = selectedModel.FullFileName
+	
+	'Find last backslash position
+	Dim lastBackslashPosition As String = InStrRev(fullPathSelectedModel, "\", -1)
+	
+	'Get filepath (without filename and extension)
+	Dim filePath As String = Left(fullPathSelectedModel, lastBackslashPosition - 1)
+	
+	'Get filename + extension
+	Dim fileNameAndExtension As String = Right(fullPathSelectedModel, Len(fullPathSelectedModel) - lastBackslashPosition)
+	']
+
+	Dim partNumber As String
+	partNumber = selectedModel.PropertySets.Item("Design Tracking Properties").Item("Part Number").Value
+
+	Dim partTitle As String
+	partTitle = selectedModel.PropertySets.Item("Inventor Summary Information").Item("Title").Value
+
+	Dim message As String
+	message = "Location: " & filePath & vbNewLine & _
+				"Filename: " & fileNameAndExtension & vbNewLine & _
+				"Part number: " & partNumber & vbNewLine & _
+				"Title: " & partTitle
+
+	MessageBox.Show(message, "iLogic: Model Info", MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+	
+End Sub

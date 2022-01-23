@@ -1,0 +1,111 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/Part
+'---------------------------------------------
+'ReplaceDerivedPart.iLogicVb v1.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'The rule replaces the derived model file in
+'the current part with a new one inputed by 
+'the user.
+'---------------------------------------------
+'Notes:
+'This method requires that the file being
+'replaced and the replacement file must be
+'from the same ancestry. This mean:
+' - that one file was saved from the other
+'   file, or
+' - both files were saved from the same
+'   "parent" file.
+'If you try to replace two completely
+'different files, this will not work.
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's part document
+	If ThisApplication.ActiveDocument.DocumentType <> kPartDocumentObject Then
+		MessageBox.Show("A part must be active.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the active document is modifiable
+	If Not ThisApplication.ActiveDocument.IsModifiable Then
+		MessageBox.Show("Can't modify part because file is read-only.", "iLogic: Read-only file", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the active part has no derived models
+	If ThisApplication.ActiveDocument.ReferencedFileDescriptors.Count = 0 Then
+		MessageBox.Show("Active part has no derived models.", "iLogic: Wrong model", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check active project type (36353 = kSingleUserMode, single user project)
+	If ThisApplication.DesignProjectManager.ActiveDesignProject.ProjectType <> MultiUserModeEnum.kSingleUserMode Then
+		'Check if the active document reserved for write
+		If ThisApplication.ActiveDocument.ReservedForWrite() Then
+			'Check if the active document reserved by the caller
+			If Not ThisApplication.ActiveDocument.ReservedForWriteByMe() Then
+				MessageBox.Show("Active part not reserved by you.", "iLogic: No permision for write", _
+								MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+				Exit Sub
+			End If
+		Else
+			MessageBox.Show("To save changes you need to checkout part.", "iLogic: File not reserved", _
+						MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+		End If
+	End If
+	
+	'Get active part document
+	Dim activePart As PartDocument
+	activePart = ThisApplication.ActiveDocument
+	
+	'Active part full file name
+	Dim refModelFullFileName As String = activePart.ReferencedFileDescriptors(1).DocumentDescriptor.ReferencedFileDescriptor.FullFileName
+	
+	'Get full file name of new derived part from user input
+	Dim newModelPath As String
+	newModelPath = InputBox("NOTES:" & vbNewLine & _
+							"If you try to replace two completely different files, this will not work." & vbNewLine & _
+							"Input new full file name below:", "iLogic: Replace derived part", refModelFullFileName)
+	
+	'Check user input
+	'[
+	'Check empty string or user hit Cancel button
+	If newModelPath = "" Then
+		MessageBox.Show("Derived part not replaced.", "iLogic: Operation canceled", MessageBoxButtons.OK, _
+						MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check full path
+	Try
+		If Dir(newModelPath) = "" Then
+			MessageBox.Show("Can't find the file: «" & newModelPath & "».", "iLogic: Wrong file name or path", MessageBoxButtons.OK, _
+							MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+			Exit Sub
+		End If
+	Catch
+		MessageBox.Show("Incorrect path.", "iLogic: Wrong input", MessageBoxButtons.OK, _
+						MessageBoxIcon.Error, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End Try
+	']
+	
+	Dim activePartFileDescriptor As FileDescriptor
+	activePartFileDescriptor = activePart.ReferencedFileDescriptors(1).DocumentDescriptor.ReferencedFileDescriptor
+	
+	Try
+		activePartFileDescriptor.ReplaceReference(newModelPath)
+	Catch
+		MessageBox.Show("Replacement file must be from the same ancestry.", "iLogic: Replacement error", MessageBoxButtons.OK, _
+						MessageBoxIcon.Error, MessageBoxDefaultButton.Button1)
+	End Try
+	
+	InventorVb.DocumentUpdate()
+	iLogicVb.UpdateWhenDone = True
+	
+End Sub

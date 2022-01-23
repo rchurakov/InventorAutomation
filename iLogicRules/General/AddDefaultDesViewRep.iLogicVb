@@ -1,0 +1,69 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/General
+'---------------------------------------------
+'AddDefaultDesViewRep.iLogicVb v1.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'The rule creates new design view
+'representation named Default in active part
+'or assembly
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's not drawing document
+	If ThisApplication.ActiveDocument.DocumentType = kDrawingDocumentObject Then
+		MessageBox.Show("Can't create design view representation in drawing.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the active document is modifiable
+	If Not ThisApplication.ActiveDocument.IsModifiable Then
+		MessageBox.Show("Can't modify part because file is read-only.", "iLogic: Read-only file", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check active project type (36353 = kSingleUserMode, single user project)
+	If ThisApplication.DesignProjectManager.ActiveDesignProject.ProjectType <> MultiUserModeEnum.kSingleUserMode Then
+		'Check if the active document reserved for write
+		If ThisApplication.ActiveDocument.ReservedForWrite() Then
+			'Check if the active document reserved by the caller
+			If Not ThisApplication.ActiveDocument.ReservedForWriteByMe() Then
+				MessageBox.Show("Active file not reserved by you.", "iLogic: No permision for write", _
+								MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+				Exit Sub
+			End If
+		Else
+			MessageBox.Show("To save changes you need to checkout the file.", "iLogic: File not reserved", _
+						MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+		End If
+	End If
+	
+	'Get the active document
+	Dim activeModel As Document
+	activeModel = ThisApplication.ActiveDocument
+	
+	'**********************************************************
+	'* Define here the name of the design view representation *
+	'**********************************************************
+	Dim userDesViewRepName As String
+	userDesViewRepName = "Default"
+	'**********************************************************
+	
+	'Check to see if the design view representation already exist.
+	Dim userDesViewRep As DesignViewRepresentation
+	On Error Resume Next
+		userDesViewRep = activeModel.ComponentDefinition.RepresentationsManager.DesignViewRepresentations.Item(userDesViewRepName)
+	On Error Goto 0
+
+	'Make sure if the design view representation already exist and if it does not exist create it
+	If userDesViewRep Is Nothing Then
+		activeModel.ComponentDefinition.RepresentationsManager.DesignViewRepresentations.Add(userDesViewRepName)
+	Else
+		MessageBox.Show("Design view «" & userDesViewRepName & "» already exist.", "iLogic: Design view was not created", MessageBoxButtons.OK, _
+						MessageBoxIcon.Information, MessageBoxDefaultButton.Button1)
+	End If
+	
+End Sub

@@ -1,0 +1,67 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/General
+'---------------------------------------------
+'OpenInFolder.iLogicVb v3.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'Rule opens and highlights current or selected
+'component file in location folder.
+'---------------------------------------------
+
+
+Sub Main()
+	'Get user selection
+	Dim userSelectSet As SelectSet
+	userSelectSet = ThisApplication.ActiveDocument.SelectSet
+	
+	'Will store document of selected model
+	Dim modelToOpen As Document
+	
+	'Check number of items selected by user
+	Select Case userSelectSet.Count
+		'Nothing selected
+		Case 0
+			modelToOpen = ThisApplication.ActiveDocument
+			Goto ShellBlock
+		'Selected one component
+		Case 1
+			Goto CheckSelectionBlock
+		'Selected two or more components or something else
+		Case Else
+			Goto ErrorSelectionBlock
+	End Select
+	
+	CheckSelectionBlock:
+	'[
+	Try
+		'Get model document from user selection
+		modelToOpen = userSelectSet.Item(1).Definition.Document
+		Goto ShellBlock
+	Catch
+		MessageBox.Show("Component was not selected.", "iLogic: Wrong selection", MessageBoxButtons.OK, _
+						MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End Try
+	Exit Sub
+	']
+	
+	ShellBlock:
+	'[
+	'Check if the selected model exists
+	If modelToOpen.FileSaveCounter = 0 Then
+			MessageBox.Show("Selected file not saved yet." & vbNewLine & "First save the file.", "iLogic: File not saved", MessageBoxButtons.OK, _
+							MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	Shell("explorer.exe /select, " & modelToOpen.FullFileName, vbNormalFocus)
+	Exit Sub
+	']
+	
+	ErrorSelectionBlock:
+	'[
+	MessageBox.Show("More than one component selected." & vbNewLine & "Please select only one instance.", "iLogic: Wrong selection", MessageBoxButtons.OK, _
+					MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+	Exit Sub
+	']
+End Sub
