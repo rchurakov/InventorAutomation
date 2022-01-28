@@ -1,0 +1,93 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/Drawing
+'---------------------------------------------
+'ReplaceModelReference.iLogicVb v2.0
+'Created by R.Churakov 2021
+'---------------------------------------------
+'The rule replaces previous source model in 
+'drawing by new with the same name as the
+'drawing. This is analogue of the Replace
+'Model Reference command in drawing
+'environment (Manage tab -> Modify -> Replace
+'Model Reference)
+'*********************************************
+
+Sub Main()
+	
+	'Check whether it's drawing document
+	If ThisApplication.ActiveDocument.DocumentType <> kDrawingDocumentObject Then
+		MessageBox.Show("The rule works in drawing only.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the active document is modifiable
+	If Not ThisApplication.ActiveDocument.IsModifiable Then
+		MessageBox.Show("Can't assign structure type because file is read-only.", "iLogic: Read-only file", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check if the model exists
+	If ThisApplication.ActiveDocument.FileSaveCounter = 0 Then
+			MessageBox.Show("Drawing not saved yet." & vbNewLine & "First save the drawing.", "iLogic: No File", MessageBoxButtons.OK, _
+							MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check active project type (36353 = kSingleUserMode, single user project)
+	If ThisApplication.DesignProjectManager.ActiveDesignProject.ProjectType <> MultiUserModeEnum.kSingleUserMode Then
+		'Check if the active document reserved for write
+		If ThisApplication.ActiveDocument.ReservedForWrite() Then
+			'Check if the active document reserved by the caller
+			If Not ThisApplication.ActiveDocument.ReservedForWriteByMe() Then
+				MessageBox.Show("Active file not reserved by you.", "iLogic: No permision for write", _
+								MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+				Exit Sub
+			End If
+		Else
+			MessageBox.Show("To save changes you need to checkout the file.", "iLogic: File not reserved", _
+						MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+		End If
+	End If
+	
+	'Get active drawing full file name
+	Dim activeDrwFullFileName As String
+	activeDrwFullFileName = ThisApplication.ActiveDocument.FullFileName()
+	
+	'Set active drawing path and file name without extension
+	Dim activeDrwPathAndFileName As String
+	activeDrwPathAndFileName = Left(activeDrwFullFileName, Len(activeDrwFullFileName) - 4)
+	
+	'Set new model full file name if a model file exists (assembly or part)
+	Dim newSourceModelName As String
+	If Dir(activeDrwPathAndFileName & ".iam") <> "" Then
+		newSourceModelName = activeDrwPathAndFileName & ".iam"
+	ElseIf Dir(activeDrwPathAndFileName & ".ipt") <> "" Then
+		newSourceModelName = activeDrwPathAndFileName & ".ipt"
+	End If
+	
+	'Replace the model
+	If newSourceModelName <> "" Then
+		'Get active drawing document
+		Dim activeDrw As DrawingDocument
+		activeDrw = ThisApplication.ActiveDocument
+		
+		'Get active drawing document file descriptor
+		Dim activeDrwFileDescriptor As FileDescriptor
+		activeDrwFileDescriptor = activeDrw.ReferencedFileDescriptors(1).DocumentDescriptor.ReferencedFileDescriptor
+		
+		'Replace reference and update drawing
+		activeDrwFileDescriptor.ReplaceReference(newSourceModelName)
+		activeDrw.Update()
+	Else
+		'Set drawing filename (without path and extension)
+		Dim lastBackslashPosition As Integer = InStrRev(activeDrwFullFileName, "\", -1)
+		Dim activeDrwFileName As String = Right(activeDrwPathAndFileName, Len(activeDrwPathAndFileName) - lastBackslashPosition)
+		
+		MessageBox.Show("Model '" & activeDrwFileName & "'" & vbNewLine & _
+		"not found.", "iLogic: Wrong file name or path", _
+		MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+	End If
+
+End Sub
