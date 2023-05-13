@@ -26,17 +26,12 @@ Sub Main()
 	Dim activeDVR As String
 	activeDVR = activeModelRepMan.ActiveDesignViewRepresentation.Name()
 	
-	'Make list of DVR in active model
-	Dim ListOfDVR As New ArrayList
+	'Make list with names of available DVR
+	Dim ListOfDVR As New List(Of String)
 	
-	'Will store next design view representation object in for-each loop
-	Dim desViewRep As DesignViewRepresentation
-	
-	i = 1
+	'Fill the list
 	For Each dvr In activeModelRepMan.DesignViewRepresentations
-		desViewRep = activeModelRepMan.DesignViewRepresentations.Item(i)
-		ListOfDVR.Add(desViewRep.Name)
-		i = i + 1
+		ListOfDVR.Add(dvr.Name)
 	Next
 
 	'Set new design view representation from list
@@ -45,8 +40,6 @@ Sub Main()
 								"Select another view.", ListOfDVR, activeDVR, "iLogic: Representations", "View's:")
 	
 	'Activate selected DVR
-	If newDesViewRep <> "" Then
-		activeModelRepMan.DesignViewRepresentations.Item(newDesViewRep).Activate()
-	End If
+	activeModelRepMan.DesignViewRepresentations.Item(newDesViewRep).Activate()
 
 End Sub
