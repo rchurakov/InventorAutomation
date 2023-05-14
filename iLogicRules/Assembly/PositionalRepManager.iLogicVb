@@ -1,0 +1,46 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/tree/master/iLogicRules/Assembly
+'---------------------------------------------
+'PositionalRepManager.iLogicVb v1.2
+'Created by R.Churakov © 2021
+'---------------------------------------------
+'The rule creates positional representation
+'manager in active model with list of
+'available positions
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's assembly document
+	If ThisApplication.ActiveDocument.DocumentType <> kAssemblyDocumentObject Then
+		MessageBox.Show("Can't show Positional representation manager. Assembly must be active.", _
+						"iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+		
+	'Get component Representations Manager
+	Dim activeModelRepMan As RepresentationsManager
+	activeModelRepMan = ThisApplication.ActiveDocument.ComponentDefinition.RepresentationsManager()
+
+	'Active position
+	Dim activePosRepName As String
+	activePosRepName = activeModelRepMan.ActivePositionalRepresentation.Name()
+	
+	'Make list with names of available positions
+	Dim ListOfPosRep As New List(Of String)
+	
+	'Fill the list
+	For Each dvr In activeModelRepMan.PositionalRepresentations
+		ListOfPosRep.Add(dvr.Name)
+	Next
+
+	'Set new positional representation from list
+	Dim newPosRepName As String
+	newPosRepName = InputListBox("Active position: " & activePosRepName & "." & vbNewLine & "Select another one.", _
+							ListOfPosRep, activePosRepName, "iLogic: Representations", "Position:")
+	
+	'Activate selected position
+	activeModelRepMan.PositionalRepresentations.Item(newPosRepName).Activate()
+
+End Sub
