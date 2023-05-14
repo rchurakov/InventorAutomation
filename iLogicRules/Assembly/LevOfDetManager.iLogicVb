@@ -1,0 +1,46 @@
+'*********************************************
+'https://github.com/rchurakov/InventorAutomation/tree/master/iLogicRules/Assembly
+'---------------------------------------------
+'LevOfDetManager.iLogicVb v1.2
+'Created by R.Churakov © 2022
+'---------------------------------------------
+'The rule creates level of detail (LOD)
+'manager in active model with list of
+'available LODs
+'*********************************************
+
+Sub Main()
+
+	'Check whether it's assembly document
+	If ThisApplication.ActiveDocument.DocumentType <> kAssemblyDocumentObject Then
+		MessageBox.Show("Can't show Positional representation manager. Assembly must be active.", _
+						"iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+		
+	'Get component Representations Manager
+	Dim activeModelRepMan As RepresentationsManager
+	activeModelRepMan = ThisApplication.ActiveDocument.ComponentDefinition.RepresentationsManager()
+
+	'Active LOD
+	Dim activeLODName As String
+	activeLODName = activeModelRepMan.ActiveLevelOfDetailRepresentation.Name()
+	
+	'Make list with names of available LODs
+	Dim ListOfLOD As New List(Of String)
+	
+	'Fill the list
+	For Each dvr In activeModelRepMan.LevelOfDetailRepresentations
+		ListOfLOD.Add(dvr.Name)
+	Next
+
+	'Set new LOD from list
+	Dim newLODName As String
+	newLODName = InputListBox("Active LOD: " & activeLODName & "." & vbNewLine & "Select new LOD.", _
+								ListOfLOD, activeLODName, "iLogic: Representations", "Level of detail:")
+	
+	'Activate selected LOD
+	activeModelRepMan.LevelOfDetailRepresentations.Item(newLODName).Activate()
+	
+End Sub
