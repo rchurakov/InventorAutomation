@@ -1,0 +1,48 @@
+'*********************************************
+'https://github.com/rchurakov/InventorAutomation/tree/master/iLogicRules/Assembly
+'---------------------------------------------
+'ChangeBOMStructure.iLogicVb v1.0
+'Created by R.Churakov 2022
+'---------------------------------------------
+'The rule changes BOM structure of any part or
+'subassembly which are not visible to
+'"reference" and for visible to "default".
+'*********************************************
+
+Sub Main()
+	'Check whether it's assembly document
+	If ThisApplication.ActiveDocument.DocumentType <> kAssemblyDocumentObject Then
+		MessageBox.Show("An assembly must be active.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Get all occurrences collection
+	Dim setOccurrences As ComponentOccurrences
+	setOccurrences = ThisApplication.ActiveDocument.ComponentDefinition.Occurrences
+	
+	'Run main function for all occurrences
+	For Each someOccurrence In setOccurrences
+		setBOMStructure(someOccurrence)
+	Next
+	
+End Sub
+
+'Main function processing all occurrences and suboccurrences
+Sub setBOMStructure(someOccurrence As ComponentOccurrence)
+	'Check component visibility and set BOM structure
+	If someOccurrence.Visible = True Then
+		someOccurrence.BOMStructure = BOMStructureEnum.kDefaultBOMStructure
+	Else
+		someOccurrence.BOMStructure = BOMStructureEnum.kReferenceBOMStructure
+	End If
+	
+	'Check if occurrence is subassembly
+	If someOccurrence.SubOccurrences.Count <> 0 Then
+		Dim subOccurrence As ComponentOccurrence
+		'Run main function for all suboccurrences recursively
+		For Each subOccurrence In someOccurrence.SubOccurrences
+			setBOMStructure(subOccurrence)
+		Next
+	End If
+End Sub
