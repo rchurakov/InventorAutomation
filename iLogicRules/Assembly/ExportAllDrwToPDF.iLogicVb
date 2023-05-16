@@ -1,0 +1,215 @@
+'*********************************************
+'https://github.com/rchurakov/InventorAutomation/tree/master/iLogicRules/Assembly
+'---------------------------------------------
+'ExportAllDrwToPDF.iLogicVb v1.6
+'Created by R.Churakov © 2023
+'---------------------------------------------
+'The script handles the active assembly
+'document by collecting the paths to the
+'drawings and then publishing them to pdf. If
+'the script finds a subassembly, it is also
+'processed recursively. So all nesting levels
+'will be published. At the end of the
+'publication, the script opens a folder with
+'pdf files.
+'---------------------------------------------
+'Notes:
+'This will not publish the drawing of the
+'active assembly document.
+'*********************************************
+
+Imports System.Windows.Forms
+
+Sub Main()
+	'Check whether it's assembly document
+	If ThisApplication.ActiveDocument.DocumentType <> kAssemblyDocumentObject Then
+		MessageBox.Show("An assembly must be active.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Set output folder
+	'[
+	'Define folder browse dialog
+	Dim openFolderDialog = New FolderBrowserDialog()
+	'Set options for folder browser dialog
+	openFolderDialog.ShowNewFolderButton = True
+	openFolderDialog.Description = "Choose Folder for Export..."
+	openFolderDialog.ShowDialog()
+	
+	outputFolderPath = openFolderDialog.SelectedPath
+	
+	'Check empty string or user hit Cancel button
+	If outputFolderPath = "" Then
+		MessageBox.Show("Output folder not set.", "iLogic: Operation canceled", MessageBoxButtons.OK, _
+						MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check user prompt
+	If Dir(outputFolderPath, vbDirectory) = "" Then
+		MessageBox.Show("Can't find the folder: «" & outputFolderPath & "».", "iLogic: Wrong folder path", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	']
+
+	'Get assembly BOM and set BOM view 'Structured'
+	Dim assemblyBOM As BOM
+	assemblyBOM = ThisApplication.ActiveDocument.ComponentDefinition.BOM
+	assemblyBOM.StructuredViewEnabled = True
+	assemblyBOM.StructuredViewFirstLevelOnly = False
+	Dim assemblyBOMView As BOMView
+	assemblyBOMView = assemblyBOM.BOMViews.Item("Structured")
+	
+	'Go through the BOM and set list of drawings paths
+	Dim listOfDrawings As New List(Of String)
+	drawingPathCollector(assemblyBOMView.BOMRows, listOfDrawings)
+	
+	'Publishing all collected drawings if present
+	publishToPDF(listOfDrawings, outputFolderPath)
+	
+	'The end of operation
+	MessageBox.Show("All jobs done.", "iLogic: Publishing is done", _
+						MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1)
+	
+	'Open output folder in explorer
+	Shell("explorer.exe " & outputFolderPath, vbNormalFocus)
+End Sub
+
+
+Sub drawingPathCollector(sourceBOMRows As BOMRowsEnumerator, listOfDrawingPaths As List(Of String))
+	For Each row In sourceBOMRows
+		'Recursively iterate child rows if present
+		If Not Row.ChildRows Is Nothing Then
+			Call drawingPathCollector(Row.ChildRows, listOfDrawingPaths)
+		End If
+		
+		'Check if component in row is virtual component
+		If TypeOf row.ComponentDefinitions.Item(1) Is VirtualComponentDefinition Then
+			Continue For
+		End If
+		
+		'Get drawing path if exist and add to the list
+		'If path already in list - skip it
+		Dim drawingPath As String = getDrawingPath(row.ComponentDefinitions.Item(1).Document)
+		Dim pathInList As Boolean = listOfDrawingPaths.Contains(drawingPath)
+		If drawingPath = "" Or pathInList Then
+			Continue For
+		Else
+			listOfDrawingPaths.Add(drawingPath)
+		End If
+	Next
+End Sub
+
+
+Sub publishToPDF(listOfStrings As List(Of String), folder As String)
+	'Run main function for all list
+	For Each path In listOfStrings
+		Dim occurrenceDrawing As DrawingDocument
+		Try
+			'Open drawing
+			occurrenceDrawing = ThisApplication.Documents.Open(path, False)'False = silent mode
+		Catch
+			Continue For
+		End Try
+		
+		'Publishing opened drawing
+		pdfPlotter(occurrenceDrawing, folder)
+		occurrenceDrawing.Close(True)'True = skip the save; False = normal save process with dialog box
+	Next
+End Sub
+
+
+Function getDrawingPath(someDocument As Document) As String
+	'Get full file name without extension (path + filename - extension)
+	Dim fullPathMinusExtOccurenceDocument As String = setFileName(someDocument, "Pathname")
+	
+	'Checking for path drawing
+	'[
+	Dim fullPathOccurenceDrawing As String
+	fullPathOccurenceDrawing = fullPathMinusExtOccurenceDocument + ".idw"
+	If Dir(fullPathOccurenceDrawing) = "" Then
+		fullPathOccurenceDrawing = fullPathMinusExtOccurenceDocument + ".dwg"
+		If Dir(fullPathOccurenceDrawing) = "" Then
+			fullPathOccurenceDrawing = ""
+		End If
+	End If
+	Return fullPathOccurenceDrawing
+	']
+End Function
+
+
+Function setFileName(sourceDocument As Document, Optional returnValueIs As String = "Filename") As String
+	'Get full file name (PATH + FILENAME + EXTENSION)
+	Dim fullPathSourceDocument As String = sourceDocument.FullFileName
+	'Find last backslash position
+	Dim lastBackslashPosition As String = InStrRev(fullPathSourceDocument, "\", -1)
+	'Get FILENAME + EXTENSION
+	Dim fullNameSourceDocument As String = Right(fullPathSourceDocument, Len(fullPathSourceDocument) - lastBackslashPosition)
+	'Get FILENAME without path and extension
+	Dim shortNameSourceDocument As String = Left(fullNameSourceDocument, Len(fullNameSourceDocument) - 4)
+	'Get only PATH without filename and extension
+	Dim pathSourceDocument As String = Left(fullPathSourceDocument, Len(fullPathSourceDocument) - Len(fullNameSourceDocument))
+	'Get PATH + FILENAME without extension
+	Dim pathAndNameSourceDocument As String = Left(fullPathSourceDocument, Len(fullPathSourceDocument) - 4)
+	
+	'Set return value
+	Dim output As String
+	
+	Select Case returnValueIs
+		Case "Filename"
+			output = fullNameSourceDocument
+		Case "Name"
+			output = shortNameSourceDocument
+		Case "Path"
+			output = pathSourceDocument
+		Case "Pathname"
+			output = pathAndNameSourceDocument
+		Case Else
+			output = fullPathSourceDocument
+	End Select
+	
+	Return output
+End Function
+
+
+Sub pdfPlotter(occurrenceDrawing As Document, folder As String)
+	'Get the PDF translator Add-In.
+	Dim PDFAddIn As TranslatorAddIn
+	PDFAddIn = ThisApplication.ApplicationAddIns.ItemById("{0AC6FD96-2F4D-42CE-8BE0-8AEA580399E4}")
+	
+	'Set a reference to the active document (the document to be published).
+	Dim oDocument As Document
+	oDocument = occurrenceDrawing
+	
+	'Create a Context object
+	Dim oContext As TranslationContext
+	oContext = ThisApplication.TransientObjects.CreateTranslationContext
+	oContext.Type = kFileBrowseIOMechanism
+
+	'Create a NameValueMap object
+	Dim oOptions As NameValueMap
+	oOptions = ThisApplication.TransientObjects.CreateNameValueMap
+
+	'Create a DataMedium object
+	Dim oDataMedium As DataMedium
+	oDataMedium = ThisApplication.TransientObjects.CreateDataMedium
+	
+	'Check whether the translator has 'SaveCopyAs' options
+	If PDFAddIn.HasSaveCopyAsOptions(oDocument, oContext, oOptions) Then
+		'Options for drawings...
+		oOptions.Value("All_Color_AS_Black") = 0
+		oOptions.Value("Remove_Line_Weights") = 0
+		oOptions.Value("Vector_Resolution") = 1200
+		oOptions.Value("Sheet_Range") = Inventor.PrintRangeEnum.kPrintAllSheets
+		'oOptions.Value("Custom_Begin_Sheet") = 2
+		'oOptions.Value("Custom_End_Sheet") = 4
+	End If
+	
+	'Set the destination file name
+	oDataMedium.FileName = folder & "\" & setFileName(occurrenceDrawing, "Name") & ".pdf"
+	
+	'Publish document
+	Call PDFAddIn.SaveCopyAs(oDocument, oContext, oOptions, oDataMedium)
+End Sub
