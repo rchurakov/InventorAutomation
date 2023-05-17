@@ -1,0 +1,48 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/...
+'---------------------------------------------
+'AddOwnPropertySet.iLogicVb v1.0
+'Created by R.Churakov 2023
+'---------------------------------------------
+'The rule creates a totally new empty set of 
+'properties in active document
+'(part/assembly/drawing). Any of pre-defined
+'sets or properties in iProperties will not be
+'changed.
+'---------------------------------------------
+'Notes:
+'You will not see any of new sets/properties
+'via iPropeprties that you created. To add or
+'to delete properties to the set you can use
+'rules AddUserCustomProperties.iLogicVb or
+'DelUserDefinedProperty.iLogicVb
+'*********************************************
+
+Sub Main()
+	'Get access for all property sets in document
+	Dim documentPropertySets As PropertySets
+	documentPropertySets = ThisApplication.ActiveDocument.PropertySets
+
+	'*****************************************
+	'* Set name of new Property Set here     *
+	'*****************************************	
+	Dim newPropertySetName As String = "Tech Property Set"
+	'*****************************************
+
+	'Declare new Property Set object to be added
+	Dim newPropertySet As PropertySet
+	
+	Try
+		'Try to obtain the Property Set to see if it already exists
+		newPropertySet = documentPropertySets.Item(newPropertySetName)
+		
+		MessageBox.Show("Property Set already exist: «" & newPropertySetName & "».", "iLogic: Set not created", _
+						MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1)
+	Catch
+		'If Property Set does not exist then add the new Property Set
+		newPropertySet = documentPropertySets.Add(newPropertySetName)
+		
+		MessageBox.Show("Property Set «" & newPropertySetName & "» was successfully created.", "iLogic: Set was created", _
+						MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1)
+	End Try
+End Sub
