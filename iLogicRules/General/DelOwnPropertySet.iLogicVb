@@ -1,0 +1,40 @@
+﻿'*********************************************
+'https://github.com/rchurakov/InventorAutomation/iLogicRules/...
+'---------------------------------------------
+'DelOwnPropertySet.iLogicVb v1.0
+'Created by R.Churakov 2023
+'---------------------------------------------
+'The rule deletes custom Property Set in
+'active document (part/assembly/drawing).
+'Any of pre-defined sets or properties in
+'iProperties will not be removed.
+'---------------------------------------------
+'Notes:
+'To delete properties from the set you can use
+'rule DelUserDefinedProperty.iLogicVb.
+'*********************************************
+
+Sub Main()
+	'Get access for all property sets in model/drawing
+	Dim documentPropertySets As PropertySets
+	documentPropertySets = ThisApplication.ActiveDocument.PropertySets
+
+	'**********************************************
+	'* Set the name of existing Property Set here *
+	'**********************************************
+	Dim somePropertySetName As String = "Tech Property Set"
+	'**********************************************
+
+	'Declare Property Set object to be deleted
+	Dim somePropertySet As PropertySet
+	
+	Try
+		'Check if the Property Set exists
+		somePropertySet = documentPropertySets.Item(somePropertySetName)
+		'Remove Property Set
+		somePropertySet.Delete()
+	Catch
+		MessageBox.Show("Property Set «" & somePropertySetName & "» does not exist.", "iLogic: Property Set not removed", _
+						MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1)
+	End Try
+End Sub
