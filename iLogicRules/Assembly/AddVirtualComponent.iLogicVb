@@ -1,0 +1,66 @@
+'*********************************************
+'https://github.com/rchurakov/InventorAutomation/tree/master/iLogicRules/Assembly
+'---------------------------------------------
+'AddVirtualComponent.iLogicVb v1.3
+'Created by R.Churakov 2023
+'---------------------------------------------
+'This rule demonstrates placing an assembly
+'virtual component with the assignment of
+'some iProperties.
+'*********************************************
+
+Sub Main()
+	'Check if the active document is modifiable
+	If Not ThisApplication.ActiveDocument.IsModifiable Then
+		MessageBox.Show("Can't create Properties because file is read-only.", "iLogic: Read-only file", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Check whether it's assembly document
+	If ThisApplication.ActiveDocument.DocumentType <> kAssemblyDocumentObject Then
+		MessageBox.Show("An assembly must be active.", "iLogic: Wrong document type", _
+						MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End If
+	
+	'Set a reference to the assembly component definintion
+	Dim activeAsmCompDef As AssemblyComponentDefinition
+	activeAsmCompDef = ThisApplication.ActiveDocument.ComponentDefinition()
+
+	'Set a reference to the transient geometry object
+	Dim oTG As TransientGeometry
+	oTG = ThisApplication.TransientGeometry()
+
+	'Create a matrix.  A new matrix is initialized with an identity matrix
+	Dim oMatrix As Matrix
+	oMatrix = oTG.CreateMatrix()
+
+	'Set the translation portion of the matrix so the part will be positioned at (0,0,0)
+	oMatrix.SetTranslation(oTG.CreateVector(0, 0, 0))
+
+	'**********************************************
+	'* Set the name of virtual component here     *
+	'**********************************************
+	Dim virtualComponentName As String = "Some Virtual Component"
+	'**********************************************
+	
+	'Try to add the virtual component
+	Dim virtualComponent As ComponentOccurrence
+	Try
+		virtualComponent = activeAsmCompDef.Occurrences.AddVirtual(virtualComponentName, oMatrix)
+	Catch
+		MessageBox.Show("Component «" & virtualComponentName & "» already exist.", "iLogic: Virtual component not added", _
+							MessageBoxButtons.OK, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button1)
+		Exit Sub
+	End Try
+	
+	'Here you can set the PART NUMBER
+	virtualComponent.Definition.PropertySets.Item("Design Tracking Properties").Item("Part Number").Value = "Virtual Component - 001"
+	
+	'Here you can set the DESCRIPTION
+	virtualComponent.Definition.PropertySets.Item("Design Tracking Properties").Item("Description").Value = "Description of virtual component"
+	
+	'Here you can set the TITLE
+	virtualComponent.Definition.PropertySets.Item("Summary Information").Item("Title").Value = "Title of virtual component"
+End Sub
